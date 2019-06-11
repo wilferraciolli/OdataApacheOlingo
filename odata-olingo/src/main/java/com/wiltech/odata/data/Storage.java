@@ -18,7 +18,9 @@ import org.apache.olingo.commons.api.data.Property;
 import org.apache.olingo.commons.api.data.ValueType;
 import org.apache.olingo.commons.api.edm.EdmEntitySet;
 import org.apache.olingo.commons.api.edm.EdmEntityType;
+import org.apache.olingo.commons.api.edm.EdmKeyPropertyRef;
 import org.apache.olingo.commons.api.ex.ODataRuntimeException;
+import org.apache.olingo.commons.api.http.HttpMethod;
 import org.apache.olingo.commons.api.http.HttpStatusCode;
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.UriParameter;
@@ -58,6 +60,54 @@ public class Storage {
         }
 
         return null;
+    }
+
+    public Entity createEntityData(final EdmEntitySet edmEntitySet, final Entity entityToCreate) {
+
+        final EdmEntityType edmEntityType = edmEntitySet.getEntityType();
+
+        // actually, this is only required if we have more than one Entity Type
+        if (edmEntityType.getName().equals(DemoEdmProvider.ET_PRODUCT_NAME)) {
+            return createProduct(edmEntityType, entityToCreate);
+        }
+
+        return null;
+    }
+
+    /**
+     * This method is invoked for PATCH or PUT requests
+     * @param edmEntitySet the edm entity set
+     * @param keyParams the key params
+     * @param updateEntity the update entity
+     * @param httpMethod the http method
+     * @throws ODataApplicationException the o data application exception
+     */
+    public void updateEntityData(final EdmEntitySet edmEntitySet, final List<UriParameter> keyParams, final Entity updateEntity,
+            final HttpMethod httpMethod) throws ODataApplicationException {
+
+        final EdmEntityType edmEntityType = edmEntitySet.getEntityType();
+
+        // actually, this is only required if we have more than one Entity Type
+        if (edmEntityType.getName().equals(DemoEdmProvider.ET_PRODUCT_NAME)) {
+            updateProduct(edmEntityType, keyParams, updateEntity, httpMethod);
+        }
+    }
+
+    /**
+     * Delete entity data.
+     * @param edmEntitySet the edm entity set
+     * @param keyParams the key params
+     * @throws ODataApplicationException the o data application exception
+     */
+    public void deleteEntityData(final EdmEntitySet edmEntitySet, final List<UriParameter> keyParams)
+            throws ODataApplicationException {
+
+        final EdmEntityType edmEntityType = edmEntitySet.getEntityType();
+
+        // actually, this is only required if we have more than one Entity Type
+        if (edmEntityType.getName().equals(DemoEdmProvider.ET_PRODUCT_NAME)) {
+            deleteProduct(edmEntityType, keyParams);
+        }
     }
 
     /**
@@ -108,7 +158,105 @@ public class Storage {
         return requestedEntity;
     }
 
-    /* HELPER */
+    private Entity createProduct(final EdmEntityType edmEntityType, final Entity entity) {
+
+        // the ID of the newly created product entity is generated automatically
+        int newId = 1;
+        while (productIdExists(newId)) {
+            newId++;
+        }
+
+        final Property idProperty = entity.getProperty("ID");
+        if (idProperty != null) {
+            idProperty.setValue(ValueType.PRIMITIVE, Integer.valueOf(newId));
+        } else {
+            // as of OData v4 spec, the key property can be omitted from the POST request body
+            entity.getProperties().add(new Property(null, "ID", ValueType.PRIMITIVE, newId));
+        }
+        entity.setId(createId("Products", newId));
+        this.productList.add(entity);
+
+        return entity;
+
+    }
+
+    private boolean productIdExists(final int id) {
+
+        for (final Entity entity : this.productList) {
+            final Integer existingID = (Integer) entity.getProperty("ID").getValue();
+            if (existingID.intValue() == id) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void updateProduct(final EdmEntityType edmEntityType, final List<UriParameter> keyParams, final Entity entity,
+            final HttpMethod httpMethod)
+            throws ODataApplicationException {
+
+        final Entity productEntity = getProduct(edmEntityType, keyParams);
+        if (productEntity == null) {
+            throw new ODataApplicationException("Entity not found",
+                    HttpStatusCode.NOT_FOUND.getStatusCode(), Locale.ENGLISH);
+        }
+
+        // loop over all properties and replace the values with the values of the given payload
+        // Note: ignoring ComplexType, as we don't have it in our odata model
+        final List<Property> existingProperties = productEntity.getProperties();
+        for (final Property existingProp : existingProperties) {
+            final String propName = existingProp.getName();
+
+            // ignore the key properties, they aren't updateable
+            if (isKey(edmEntityType, propName)) {
+                continue;
+            }
+
+            final Property updateProperty = entity.getProperty(propName);
+            // the request payload might not consider ALL properties, so it can be null
+            if (updateProperty == null) {
+                // if a property has NOT been added to the request payload
+                // depending on the HttpMethod, our behavior is different
+                if (httpMethod.equals(HttpMethod.PATCH)) {
+                    // in case of PATCH, the existing property is not touched
+                    continue; // do nothing
+                } else if (httpMethod.equals(HttpMethod.PUT)) {
+                    // in case of PUT, the existing property is set to null
+                    existingProp.setValue(existingProp.getValueType(), null);
+                    continue;
+                }
+            }
+
+            // change the value of the properties
+            existingProp.setValue(existingProp.getValueType(), updateProperty.getValue());
+        }
+    }
+
+    private void deleteProduct(final EdmEntityType edmEntityType, final List<UriParameter> keyParams)
+            throws ODataApplicationException {
+
+        final Entity productEntity = getProduct(edmEntityType, keyParams);
+        if (productEntity == null) {
+            throw new ODataApplicationException("Entity not found", HttpStatusCode.NOT_FOUND.getStatusCode(), Locale.ENGLISH);
+        }
+
+        this.productList.remove(productEntity);
+    }
+
+    /* HELPERS */
+
+    private boolean isKey(final EdmEntityType edmEntityType, final String propertyName) {
+        final List<EdmKeyPropertyRef> keyPropertyRefs = edmEntityType.getKeyPropertyRefs();
+        for (final EdmKeyPropertyRef propRef : keyPropertyRefs) {
+            final String keyPropertyName = propRef.getName();
+            if (keyPropertyName.equals(propertyName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void initSampleData() {
 
         // add some sample product entities
