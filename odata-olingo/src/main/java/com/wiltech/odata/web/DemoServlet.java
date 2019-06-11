@@ -26,6 +26,7 @@ import com.wiltech.odata.data.Storage;
 import com.wiltech.odata.service.DemoEdmProvider;
 import com.wiltech.odata.service.DemoEntityCollectionProcessor;
 import com.wiltech.odata.service.DemoEntityProcessor;
+import com.wiltech.odata.service.DemoPrimitiveProcessor;
 
 /**
  * The type Demo servlet.
@@ -59,7 +60,7 @@ public class DemoServlet extends HttpServlet {
             final ODataHttpHandler handler = odata.createHandler(edm);
             handler.register(new DemoEntityCollectionProcessor(storage));
             handler.register(new DemoEntityProcessor(storage));
-            //                  handler.register(new DemoPrimitiveProcessor(storage));
+            handler.register(new DemoPrimitiveProcessor(storage));
 
             // let the handler do the work
             handler.process(req, resp);

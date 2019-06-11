@@ -51,7 +51,7 @@ public class DemoEntityProcessor implements EntityProcessor {
     }
 
     /**
-     * Initiate component
+     * Initiate component. Here we are initialized by the Framework to pass the context objects to us
      * @param odata
      * @param serviceMetadata
      */
