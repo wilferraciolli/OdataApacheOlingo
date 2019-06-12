@@ -21,13 +21,14 @@ import org.apache.olingo.commons.api.http.HttpHeader;
 import org.apache.olingo.commons.api.http.HttpStatusCode;
 import org.apache.olingo.server.api.OData;
 import org.apache.olingo.server.api.ODataApplicationException;
-import org.apache.olingo.server.api.ODataLibraryException;
 import org.apache.olingo.server.api.ODataRequest;
 import org.apache.olingo.server.api.ODataResponse;
 import org.apache.olingo.server.api.ServiceMetadata;
+import org.apache.olingo.server.api.deserializer.DeserializerException;
 import org.apache.olingo.server.api.processor.PrimitiveProcessor;
 import org.apache.olingo.server.api.serializer.ODataSerializer;
 import org.apache.olingo.server.api.serializer.PrimitiveSerializerOptions;
+import org.apache.olingo.server.api.serializer.SerializerException;
 import org.apache.olingo.server.api.serializer.SerializerResult;
 import org.apache.olingo.server.api.uri.UriInfo;
 import org.apache.olingo.server.api.uri.UriParameter;
@@ -50,27 +51,24 @@ public class DemoPrimitiveProcessor implements PrimitiveProcessor {
         this.storage = storage;
     }
 
-    /**
-     * Here we are initialized by the Framework to pass the context objects to us
-     * @param odata
-     * @param serviceMetadata
-     */
     public void init(final OData odata, final ServiceMetadata serviceMetadata) {
         this.odata = odata;
         this.serviceMetadata = serviceMetadata;
+
     }
 
-    /**
-     * This one is relevant for reading a single property of a single entity
-     * @param request
-     * @param response
-     * @param uriInfo
-     * @param responseFormat
-     * @throws ODataApplicationException
-     * @throws ODataLibraryException
+    /*
+     * In our example, the URL would be: http://localhost:8080/DemoService/DemoService.svc/Products(1)/Name
+     * and the response:
+     * {
+     *
+     * @odata.context: "$metadata#Products/Name",
+     * value: "Notebook Basic 15"
+     * }
      */
-    public void readPrimitive(final ODataRequest request, final ODataResponse response, final UriInfo uriInfo, final ContentType responseFormat)
-            throws ODataApplicationException, ODataLibraryException {
+    public void readPrimitive(final ODataRequest request, final ODataResponse response,
+            final UriInfo uriInfo, final ContentType responseFormat)
+            throws ODataApplicationException, SerializerException {
 
         // 1. Retrieve info from URI
         // 1.1. retrieve the info about the requested entity set
@@ -116,7 +114,7 @@ public class DemoPrimitiveProcessor implements PrimitiveProcessor {
             final SerializerResult serializerResult = serializer.primitive(serviceMetadata, edmPropertyType, property, options);
             final InputStream propertyStream = serializerResult.getContent();
 
-            //4. configure the response object
+            // 4. configure the response object
             response.setContent(propertyStream);
             response.setStatusCode(HttpStatusCode.OK.getStatusCode());
             response.setHeader(HttpHeader.CONTENT_TYPE, responseFormat.toContentTypeString());
@@ -126,14 +124,18 @@ public class DemoPrimitiveProcessor implements PrimitiveProcessor {
         }
     }
 
+    /*
+     * These processor methods are not handled in this tutorial
+     */
+
     public void updatePrimitive(final ODataRequest request, final ODataResponse response, final UriInfo uriInfo, final ContentType requestFormat,
             final ContentType responseFormat)
-            throws ODataApplicationException, ODataLibraryException {
-
+            throws ODataApplicationException, DeserializerException, SerializerException {
+        throw new ODataApplicationException("Not supported.", HttpStatusCode.NOT_IMPLEMENTED.getStatusCode(), Locale.ROOT);
     }
 
     public void deletePrimitive(final ODataRequest request, final ODataResponse response, final UriInfo uriInfo)
-            throws ODataApplicationException, ODataLibraryException {
-
+            throws ODataApplicationException {
+        throw new ODataApplicationException("Not supported.", HttpStatusCode.NOT_IMPLEMENTED.getStatusCode(), Locale.ROOT);
     }
 }
