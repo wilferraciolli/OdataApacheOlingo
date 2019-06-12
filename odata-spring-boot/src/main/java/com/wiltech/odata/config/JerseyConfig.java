@@ -34,7 +34,6 @@ import com.wiltech.odata.service.CarsODataJPAServiceFactory;
 
 /**
  * Jersey JAX-RS configuration
- * @author Philippe
  */
 @Component
 @ApplicationPath("/odata")
@@ -48,12 +47,10 @@ public class JerseyConfig extends ResourceConfig {
     public JerseyConfig(CarsODataJPAServiceFactory serviceFactory, EntityManagerFactory emf) {
 
         ODataApplication app = new ODataApplication();
-
         app
                 .getClasses()
                 .forEach(c -> {
-                    // Avoid using the default RootLocator, as we want
-                    // a Spring Managed one
+                    // Avoid using the default RootLocator, as we want a Spring Managed one
                     if (!ODataRootLocator.class.isAssignableFrom(c)) {
                         register(c);
                     }
@@ -65,15 +62,11 @@ public class JerseyConfig extends ResourceConfig {
 
     /**
      * This filter handles the EntityManager transaction lifecycle.
-     * @author Philippe
      */
     @Provider
     public static class EntityManagerFilter implements ContainerRequestFilter, ContainerResponseFilter {
 
         private static final Logger log = LoggerFactory.getLogger(EntityManagerFilter.class);
-        /**
-         * The constant EM_REQUEST_ATTRIBUTE.
-         */
         public static final String EM_REQUEST_ATTRIBUTE = EntityManagerFilter.class.getName() + "_ENTITY_MANAGER";
 
         private final EntityManagerFactory emf;
@@ -118,9 +111,7 @@ public class JerseyConfig extends ResourceConfig {
             }
 
             em.close();
-
         }
-
     }
 
     /**
